@@ -333,6 +333,8 @@ vulkan_test_extra(compute_wait_wait-fences compute_wait --wait-type wait-fences)
 vulkan_test_extra(compute_wait_wait-semaphores compute_wait --wait-type wait-semaphores)
 vulkan_test_extra(compute_wait_query-pool compute_wait --wait-type query-pool)
 
+vulkan_test(event_hang)
+
 vulkan_test(compute_device_generated)
 
 vulkan_test(compute_shader_object)
