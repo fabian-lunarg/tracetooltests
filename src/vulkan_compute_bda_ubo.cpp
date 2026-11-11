@@ -13,6 +13,7 @@
 #define UBO_SIZE 32
 
 static bool use_ssbo = false;
+static VkDeviceSize descriptor_offset = 0;
 
 struct pixel
 {
@@ -23,6 +24,7 @@ static void show_usage()
 {
 	compute_usage();
 	printf("-S/--ssbo              Use SSBO instead of UBO\n");
+	printf("-uo/--unaligned-offset Bind the buffer at offset 4, so the address is not 8-byte aligned\n");
 }
 
 static bool test_cmdopt(int& i, int argc, char** argv, vulkan_req_t& reqs)
@@ -30,6 +32,11 @@ static bool test_cmdopt(int& i, int argc, char** argv, vulkan_req_t& reqs)
 	if (match(argv[i], "-S", "--ssbo"))
 	{
 		use_ssbo = true;
+		return true;
+	}
+	else if (match(argv[i], "-uo", "--unaligned-offset"))
+	{
+		descriptor_offset = 4;
 		return true;
 	}
 	return compute_cmdopt(i, argc, argv, reqs);
@@ -48,6 +55,16 @@ int main(int argc, char** argv)
 	reqs.bufferDeviceAddress = true;
 	reqs.reqfeat12.bufferDeviceAddress = VK_TRUE;
 	vulkan_setup_t vulkan = test_init(argc, argv, "vulkan_compute_bda_ubo", reqs);
+
+	const VkDeviceSize min_offset_alignment = use_ssbo ? vulkan.device_properties.limits.minStorageBufferOffsetAlignment
+	                                                   : vulkan.device_properties.limits.minUniformBufferOffsetAlignment;
+	if (descriptor_offset % min_offset_alignment != 0)
+	{
+		printf("Buffer offset %u is not supported, min offset alignment is %u\n", (unsigned)descriptor_offset, (unsigned)min_offset_alignment);
+		test_done(vulkan);
+		exit(77);
+	}
+
 	compute_resources r = compute_init(vulkan, reqs);
 	const int width = std::get<int>(reqs.options.at("width"));
 	const int height = std::get<int>(reqs.options.at("height"));
@@ -97,8 +114,8 @@ int main(int argc, char** argv)
 
 	char* data = nullptr;
 	result = vkMapMemory(vulkan.device, ubo_memory, 0, aligned_buffer_size, 0, (void**)&data);
-	*((uint64_t*)data) = address;
-	VkDeviceSize offset = 0;
+	memcpy(data + descriptor_offset, &address, sizeof(address));
+	VkDeviceSize offset = descriptor_offset;
 	VkMarkedOffsetsARM ar = { VK_STRUCTURE_TYPE_MARKED_OFFSETS_ARM, nullptr };
 	VkMarkingTypeARM markingType = VK_MARKING_TYPE_DEVICE_ADDRESS_ARM;
 	VkMarkingSubTypeARM subType = { .deviceAddressType = VK_DEVICE_ADDRESS_TYPE_BUFFER_ARM };
@@ -156,8 +173,8 @@ int main(int argc, char** argv)
 
 	VkDescriptorBufferInfo descriptorBufferInfo = {};
 	descriptorBufferInfo.buffer = ubo;
-	descriptorBufferInfo.offset = 0;
-	descriptorBufferInfo.range = UBO_SIZE;
+	descriptorBufferInfo.offset = descriptor_offset;
+	descriptorBufferInfo.range = UBO_SIZE - descriptor_offset;
 	VkWriteDescriptorSet writeDescriptorSet = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, nullptr };
 	writeDescriptorSet.dstSet = r.descriptorSet;
 	writeDescriptorSet.dstBinding = 0;

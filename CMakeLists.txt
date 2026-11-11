@@ -400,6 +400,8 @@ vulkan_test_extra(compute_bda_sc_unhappy_stage_pnext compute_bda_sc_unhappy --st
 vulkan_test(compute_bda_pushconstant) # buffer device address through push constants
 vulkan_test(compute_bda_ubo) # buffer device address through uniform buffer objects
 vulkan_test_extra(compute_bda_ubo_1_test_1 compute_bda_ubo --ssbo)
+vulkan_test_extra(compute_bda_ubo_unaligned_offset compute_bda_ubo --unaligned-offset)
+vulkan_test_extra(compute_bda_ssbo_unaligned_offset compute_bda_ubo --ssbo --unaligned-offset)
 vulkan_test(compute_bda_copying_address) # copying buffer device address
 vulkan_test_extra(compute_bda_copying_address_gpu_driven compute_bda_copying_address --gpu-driven)
 vulkan_test(compute_bda_copying_address_minimal) # reduced copying buffer device address repro
